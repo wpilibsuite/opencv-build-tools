@@ -1,0 +1,61 @@
+// Gradle script to publish all OpenCV artifacts 
+
+apply plugin: 'maven-publish'
+
+if (!hasProperty('repo')) {
+    ext.repo = 'development'
+}
+
+publishing {
+    repositories {
+        maven {
+        	name 'LocalFrcMaven'
+            url "${System.getProperty('user.home')}/releases/maven/${project.repo}"
+        }
+    }
+
+    publications {
+    	// Java, headers, and sources are built three times (once by each slave)
+    	// Since the build will fail if multiple artifacts have the same extension and classifier,
+    	// we need to keep track of which ones have already been published
+    	def alreadyPublished = []
+   		fileTree('./') // all files in the workspace
+   			.matching {
+   				include '**/*.jar' // only get jars
+   			}
+   		    .forEach { f -> 
+   		    	if (!alreadyPublished.contains(f.getName())) {
+					alreadyPublished.add(f.getName())
+   		    		"${getArtifactId(f)}"(MavenPublication) {
+   		    			groupId = 'org.opencv'
+   		    			version = '3.1.0'
+   		    			artifactId = "${getArtifactId(f)}"
+   		    			artifact(f) {
+   		    				if (needsClassifier(f)) {
+   		    					classifier = "${getClassifier(f)}"
+   		    				}
+   		    			}
+   		    		}
+   		    	} else {
+   		    		println "Have already published an artifact called '${f.getName()}', skipping publish"
+   		    	}
+   			}
+    }
+}
+
+// Extract the artifact ID from an artifact file e.g. 'opencv-java-3.1.0.jar' -> 'opencv-java'
+def getArtifactId(f) {
+	def jarName = f.getName()
+	return jarName.find(/opencv-[^-]+/)
+}
+
+// Checks if an artifact needs a classifier (e.g. it's platform-specific)
+def needsClassifier(f) {
+	return f.getName().matches(/.*(linux|osx|windows).*/)
+}
+
+// Extracts the classifier from an artifact e.g. 'opencv-jni-3.1.0-linux-x86_64.jar' -> 'linux-x86_64'
+def getClassifier(f) {
+	def jarName = f.getName()
+	return jarName.find(/((linux|osx|windows)-([^.]+))/)
+}

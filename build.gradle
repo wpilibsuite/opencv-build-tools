@@ -22,6 +22,8 @@ publishing {
            fileTree('./') // all files in the workspace
                 .matching {
                     include 'Multi-platform=*/**'
+                    include 'opencv-jni-*.jar'
+                    include 'opencv-natives-*.jar'
                 }
                 .forEach { f -> 
                     if (!alreadyPublished.contains(f.getName())) {
